@@ -1,0 +1,31 @@
+{
+  "name": "level-writestream",
+  "version": "0.0.1",
+  "description": "LevelUP Write Stream compatible with streams2",
+  "main": "index.js",
+  "scripts": {
+    "test": "tap tests/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/pgte/level-writestream.git"
+  },
+  "keywords": [
+    "leveldb",
+    "levelup",
+    "write",
+    "stream"
+  ],
+  "author": "pgte",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/pgte/level-writestream/issues"
+  },
+  "devDependencies": {
+    "level": "*",
+    "tap": "*",
+    "split": "*",
+    "stream-combiner": "*",
+    "through": "*"
+  }
+}
