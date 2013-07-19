@@ -5,16 +5,23 @@ var fs = require('fs');
 var LevelWritestream = require('../');
 var sourceStream = require('./source_stream');
 
+var dir = __dirname + '/db';
 var db;
 var ws;
 
+test('removes the db dir', function(t) {
+  if (fs.existsSync(dir)) {
+    fs.readdirSync(dir).forEach(remove);
+  }
+
+  t.end();
+
+  function remove(file) {
+    fs.unlinkSync(dir + '/' + file);
+  }
+});
 
 test('create db', function(t) {
-  var dir = __dirname + '/db';
-  try {
-    fs.unlinkSync(dir);
-  } catch(_) {}
-
   db = level(dir, {createIfMissing: true});
   LevelWritestream(db);
 
@@ -49,6 +56,15 @@ test('all data is there', function(t) {
     t.equal(i, 9999);
     t.end();
   }
+});
+
+xtest('gets a put write stream', function(t) {
+  ws = db.createWriteStream();
+  var rs = sourceStream(__dirname + '/fixtures/puts.json');
+
+  rs.pipe(ws);
+
+  ws.once('finish', t.end.bind(t));
 });
 
 test('close db', function(t) {
