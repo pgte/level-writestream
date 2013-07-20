@@ -3,7 +3,7 @@ var inherits = require('util').inherits;
 
 var defaultWaterMark = 100;
 
-module.exports =
+exports.create =
 function createWriteStream(options) {
   return new WriteStream(this, options);
 };
@@ -29,7 +29,6 @@ inherits(WriteStream, Writable);
 
 WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
   var self = this;
-  console.log('writing a batch of %d', batch.length);
   batch = batch.map(function(rec) {
     return {
       type: self.type,
