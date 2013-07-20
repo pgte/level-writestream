@@ -15,8 +15,6 @@ function WriteReq(chunk, cb) {
 function WritableState(options, stream) {
   options = options || {};
 
-  this.maxSize = options.maxSize || 50;
-
   // the point at which write() starts returning false
   // Note: 0 is a valid value, means that we always return false if
   // the entire buffer is not flushed immediately on write()
@@ -25,10 +23,6 @@ function WritableState(options, stream) {
 
   // cast to ints.
   this.highWaterMark = ~~this.highWaterMark;
-
-  if (this.highWaterMark <= this.maxSize)
-    throw new Error('maxSize (' + this.maxSize + ') ' +
-      'is bigger than highWaterMark (' + this.highWaterMark + ')');
 
   this.needDrain = false;
   // at the start of calling end()
@@ -127,7 +121,7 @@ function writeOrBuffer(stream, state, chunk, cb) {
 }
 
 function maybeFlush(stream, state) {
-  if (! state.writing && state.length >= state.maxSize || state.ending) {
+  if (! state.writing) {
     flush(stream, state);
   } else if (! state.nextTick) {
     state.nextTick = function() {
@@ -231,16 +225,6 @@ function onwriteDrain(stream, state) {
     state.needDrain = false;
     stream.emit('drain');
   }
-}
-
-
-// if there's something in the buffer waiting, then process it
-function clearBuffer(stream, state) {
-  state.bufferProcessing = true;
-
-  flush(stream, state);
-
-  state.bufferProcessing = false;
 }
 
 BatchObjectWriteStream.prototype._writeBatch = function(batch, cb) {
