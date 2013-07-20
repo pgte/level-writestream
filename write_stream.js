@@ -17,6 +17,8 @@ function WriteStream(db, options) {
   this.type = options && options.type || 'put';
 
   this.once('finish', onFinish.bind(this));
+
+  this.options = options || {};
 }
 
 inherits(WriteStream, Writable);
@@ -26,18 +28,19 @@ inherits(WriteStream, Writable);
 
 
 WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
-  batch = batch.map(addType.bind(this));
+  var self = this;
+  console.log('writing a batch of %d', batch.length);
+  batch = batch.map(function(rec) {
+    return {
+      type: self.type,
+      key: rec.key,
+      value: rec.value,
+      keyEncoding: rec.keyEncoding || self.options.keyEncoding,
+      valueEncoding: rec.valueEncoding || self.encoding || self.options.valueEncoding
+    }
+  });
   this.db.batch(batch, cb);
 };
-
-function addType(rec) {
-  return {
-    type: this.type,
-    key: rec.key,
-    value: rec.value
-  };
-}
-
 
 /// onFinish
 
