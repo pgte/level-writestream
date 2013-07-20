@@ -15,6 +15,8 @@ function WriteStream(db, options) {
 
   this.db = db;
   this.type = options && options.type || 'put';
+
+  this.once('finish', onFinish.bind(this));
 }
 
 inherits(WriteStream, Writable);
@@ -34,4 +36,11 @@ function addType(rec) {
     key: rec.key,
     value: rec.value
   };
+}
+
+
+/// onFinish
+
+function onFinish() {
+  this.emit('close'); // backwards compatibility
 }

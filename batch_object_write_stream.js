@@ -122,13 +122,28 @@ function writeOrBuffer(stream, state, chunk, cb) {
   state.needDrain = !ret;
 
   state.buffer.push(new WriteReq(chunk, cb));
-  if (! state.writing && state.length >= state.maxSize) {
-    var buffer = state.buffer;
+  maybeFlush(stream, state);
+  return ret;
+}
+
+function maybeFlush(stream, state) {
+  if (! state.writing && state.length >= state.maxSize || state.ending) {
+    flush(stream, state);
+  } else if (! state.nextTick) {
+    state.nextTick = function() {
+      flush(stream, state);
+    };
+    process.nextTick(state.nextTick);
+  }
+}
+
+function flush(stream, state) {
+  state.nextTick = false;
+  var buffer = state.buffer;
+  if (! state.writing && buffer.length) {
     state.buffer = [];
     doWrite(stream, state, buffer);
   }
-
-  return ret;
 }
 
 function doWrite(stream, state, buffer) {
@@ -187,8 +202,8 @@ function onwrite(stream, er) {
     // Check if we're actually ready to finish, but don't emit yet
     var finished = needFinish(stream, state);
 
-    if (!finished && !state.bufferProcessing && state.buffer.length)
-      clearBuffer(stream, state);
+    if (!finished && state.buffer.length)
+      flush(stream, state);
 
     if (sync) {
       process.nextTick(function() {
@@ -223,11 +238,7 @@ function onwriteDrain(stream, state) {
 function clearBuffer(stream, state) {
   state.bufferProcessing = true;
 
-  if (state.buffer.length) {
-    var buffer = state.buffer;
-    state.buffer = [];
-    doWrite(stream, state, buffer);
-  }
+  flush(stream, state);
 
   state.bufferProcessing = false;
 }
@@ -266,6 +277,7 @@ function finishMaybe(stream, state) {
 
 function endWritable(stream, state, cb) {
   state.ending = true;
+  flush(stream, state);
   finishMaybe(stream, state);
   if (cb) {
     if (state.finished)
