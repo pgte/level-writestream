@@ -15,6 +15,8 @@ function WriteReq(chunk, cb) {
 function WritableState(options, stream) {
   options = options || {};
 
+  this.maxSize = options.maxSize || 50;
+
   // the point at which write() starts returning false
   // Note: 0 is a valid value, means that we always return false if
   // the entire buffer is not flushed immediately on write()
@@ -23,6 +25,10 @@ function WritableState(options, stream) {
 
   // cast to ints.
   this.highWaterMark = ~~this.highWaterMark;
+
+  if (this.highWaterMark <= this.maxSize)
+    throw new Error('maxSize (' + this.maxSize + ') ' +
+      'is bigger than highWaterMark (' + this.highWaterMark + ')');
 
   this.needDrain = false;
   // at the start of calling end()
@@ -110,28 +116,44 @@ Batch.prototype.write = function(chunk, cb) {
 // in the queue, and wait our turn.  Otherwise, call _write
 // If we return false, then we need a drain event, so set that flag.
 function writeOrBuffer(stream, state, chunk, cb) {
-  var len = 1;
-
-  state.length += len;
+  state.length += 1;
 
   var ret = state.length < state.highWaterMark;
   state.needDrain = !ret;
 
-  if (state.writing)
-    state.buffer.push(new WriteReq(chunk, cb));
-  else
-    doWrite(stream, state, len, chunk, cb);
+  state.buffer.push(new WriteReq(chunk, cb));
+  if (! state.writing && state.length >= state.maxSize) {
+    var buffer = state.buffer;
+    state.buffer = [];
+    doWrite(stream, state, buffer);
+  }
 
   return ret;
 }
 
-function doWrite(stream, state, len, chunk, cb) {
-  state.writelen = len;
-  state.writecb = cb;
+function doWrite(stream, state, buffer) {
+  var batch = buffer.map(extractChunkFromWriteReq);
+  var cbs = buffer.map(extractCbFromWriteReq);
+  state.writecb = function(err) {
+    cbs.forEach(callIfExists);
+  }
+  state.writelen = batch.length;
   state.writing = true;
   state.sync = true;
-  stream._write(chunk, state.onwrite);
+  stream._writeBatch(batch, state.onwrite);
   state.sync = false;
+}
+
+function callIfExists(cb) {
+  if (cb) cb();
+}
+
+function extractChunkFromWriteReq(writeReq) {
+  return writeReq.chunk;
+}
+
+function extractCbFromWriteReq(writeReq) {
+  return writeReq.cb;
 }
 
 function onwriteError(stream, state, sync, er, cb) {
@@ -201,32 +223,16 @@ function onwriteDrain(stream, state) {
 function clearBuffer(stream, state) {
   state.bufferProcessing = true;
 
-  for (var c = 0; c < state.buffer.length; c++) {
-    var entry = state.buffer[c];
-    var chunk = entry.chunk;
-    var cb = entry.callback;
-    var len = 1;
-
-    doWrite(stream, state, len, chunk, cb);
-
-    // if we didn't call the onwrite immediately, then
-    // it means that we need to wait until it does.
-    // also, that means that the chunk and cb are currently
-    // being processed, so move the buffer counter past them.
-    if (state.writing) {
-      c++;
-      break;
-    }
+  if (state.buffer.length) {
+    var buffer = state.buffer;
+    state.buffer = [];
+    doWrite(stream, state, buffer);
   }
 
   state.bufferProcessing = false;
-  if (c < state.buffer.length)
-    state.buffer = state.buffer.slice(c);
-  else
-    state.buffer.length = 0;
 }
 
-Batch.prototype._write = function(chunk, cb) {
+Batch.prototype._writeBatch = function(batch, cb) {
   cb(new Error('not implemented'));
 };
 

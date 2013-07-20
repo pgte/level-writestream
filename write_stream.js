@@ -1,7 +1,7 @@
 var Writable = require('./batch_object_write_stream');
 var inherits = require('util').inherits;
 
-var defaultWaterMark = 50;
+var defaultWaterMark = 100;
 
 module.exports =
 function createWriteStream(options) {
@@ -14,6 +14,7 @@ function WriteStream(db, options) {
     highWaterMark: options && options.highWaterMark || defaultWaterMark });
 
   this.db = db;
+  this.type = options && options.type || 'put';
 }
 
 inherits(WriteStream, Writable);
@@ -22,6 +23,15 @@ inherits(WriteStream, Writable);
 /// _write
 
 
-WriteStream.prototype._write = function _write(chunk, cb) {
-  this.db.put(chunk.key, chunk.value, cb);
+WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
+  batch = batch.map(addType.bind(this));
+  this.db.batch(batch, cb);
 };
+
+function addType(rec) {
+  return {
+    type: this.type,
+    key: rec.key,
+    value: rec.value
+  };
+}
