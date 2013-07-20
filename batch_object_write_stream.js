@@ -1,11 +1,11 @@
-module.exports = Batch;
-Batch.WritableState = WritableState;
+module.exports = BatchObjectWriteStream;
+BatchObjectWriteStream.WritableState = WritableState;
 
 var util = require('util');
 var assert = require('assert');
 var Stream = require('stream');
 
-util.inherits(Batch, Stream);
+util.inherits(BatchObjectWriteStream, Stream);
 
 function WriteReq(chunk, cb) {
   this.chunk = chunk;
@@ -71,9 +71,9 @@ function WritableState(options, stream) {
   this.buffer = [];
 }
 
-function Batch(options) {
-  if (!(this instanceof Batch) && !(this instanceof Stream.Duplex))
-    return new Batch(options);
+function BatchObjectWriteStream(options) {
+  if (!(this instanceof BatchObjectWriteStream) && !(this instanceof Stream.Duplex))
+    return new BatchObjectWriteStream(options);
 
   this._writableState = new WritableState(options, this);
 
@@ -84,7 +84,7 @@ function Batch(options) {
 }
 
 // Otherwise people can pipe Writable streams, which is just wrong.
-Batch.prototype.pipe = function() {
+BatchObjectWriteStream.prototype.pipe = function() {
   this.emit('error', new Error('Cannot pipe. Not readable.'));
 };
 
@@ -98,7 +98,7 @@ function writeAfterEnd(stream, state, cb) {
   });
 }
 
-Batch.prototype.write = function(chunk, cb) {
+BatchObjectWriteStream.prototype.write = function(chunk, cb) {
   var state = this._writableState;
   var ret = false;
 
@@ -232,11 +232,11 @@ function clearBuffer(stream, state) {
   state.bufferProcessing = false;
 }
 
-Batch.prototype._writeBatch = function(batch, cb) {
+BatchObjectWriteStream.prototype._writeBatch = function(batch, cb) {
   cb(new Error('not implemented'));
 };
 
-Batch.prototype.end = function(chunk, cb) {
+BatchObjectWriteStream.prototype.end = function(chunk, cb) {
   var state = this._writableState;
 
   if (typeof chunk !== 'undefined' && chunk !== null)
