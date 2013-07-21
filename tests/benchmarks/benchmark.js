@@ -66,7 +66,7 @@ ws.once('close', function() {
 function writeSome() {
   if (key < max) {
     write(chunks);
-    process.nextTick(writeSome);
+    setTimeout(writeSome, 10);
   } else rs.end();
 }
 
