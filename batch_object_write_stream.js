@@ -41,24 +41,19 @@ function WritableState(options, stream) {
   // not happen before the first write call.
   this.sync = true;
 
-  // a flag to know if we're processing previously buffered items, which
-  // may call the _write() callback in the same tick, so that we don't
-  // end up in an overlapped onwrite situation.
-  this.bufferProcessing = false;
-
   // the callback that's passed to _write(chunk,cb)
   this.onwrite = function(er) {
     onwrite(stream, er);
   };
-
-  // the callback that the user supplies to write(chunk,encoding,cb)
-  this.writecb = null;
 
   // the amount that is being written when _write is called.
   this.writelen = 0;
 
   this.buffer = [];
   this.callbacks = [];
+
+  this.writeBuffer = null;
+  this.writeCallbacks = null;
 }
 
 function BatchObjectWriteStream(options) {
@@ -159,10 +154,6 @@ function doWrite(stream, state) {
 
   stream._writeBatch(batch, state.onwrite);
   state.sync = false;
-}
-
-function callIfExists(cb) {
-  if (cb) cb();
 }
 
 function onwriteError(stream, state, sync, er, cbs) {
