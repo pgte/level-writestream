@@ -7,11 +7,6 @@ var Stream = require('stream');
 
 util.inherits(BatchObjectWriteStream, Stream);
 
-function WriteReq(chunk, cb) {
-  this.chunk = chunk;
-  this.callback = cb;
-}
-
 function WritableState(options, stream) {
   options = options || {};
 
@@ -63,6 +58,7 @@ function WritableState(options, stream) {
   this.writelen = 0;
 
   this.buffer = [];
+  this.callbacks = [];
 }
 
 function BatchObjectWriteStream(options) {
@@ -92,16 +88,21 @@ function writeAfterEnd(stream, state, cb) {
   });
 }
 
-BatchObjectWriteStream.prototype.write = function(chunk, cb) {
+BatchObjectWriteStream.prototype.write = function(chunk, encoding, cb) {
   var state = this._writableState;
   var ret = false;
+
+  if (arguments.length < 3) {
+    cb = encoding;
+    encoding = undefined;
+  }
 
   if (typeof cb !== 'function')
     cb = function() {};
 
   if (state.ended)
     writeAfterEnd(this, state, cb);
-  else ret = writeOrBuffer(this, state, chunk, cb);
+  else ret = writeOrBuffer(this, state, chunk, encoding, cb);
 
   return ret;
 };
@@ -109,13 +110,15 @@ BatchObjectWriteStream.prototype.write = function(chunk, cb) {
 // if we're already writing something, then just put this
 // in the queue, and wait our turn.  Otherwise, call _write
 // If we return false, then we need a drain event, so set that flag.
-function writeOrBuffer(stream, state, chunk, cb) {
+function writeOrBuffer(stream, state, chunk, encoding, cb) {
   state.length += 1;
 
   var ret = state.length < state.highWaterMark;
   state.needDrain = !ret;
 
-  state.buffer.push(new WriteReq(chunk, cb));
+  if (encoding && ! chunk.encoding) chunk.encoding = encoding;
+  state.buffer.push(chunk);
+  state.callbacks.push(cb);
   maybeFlush(stream, state);
   return ret;
 }
@@ -134,21 +137,23 @@ function maybeFlush(stream, state) {
 function flush(stream, state) {
   state.nextTick = false;
   var buffer = state.buffer;
+  var callbacks = state.callbacks;
   if (! state.writing && buffer.length) {
     state.buffer = [];
-    doWrite(stream, state, buffer);
+    state.callbacks = [];
+    state.writeBuffer = buffer;
+    state.writeCallbacks = callbacks;
+    doWrite(stream, state, buffer, callbacks);
   }
 }
 
-function doWrite(stream, state, buffer) {
-  var batch = buffer.map(extractChunkFromWriteReq);
-  var cbs = buffer.map(extractCbFromWriteReq);
-  state.writecb = function(err) {
-    cbs.forEach(callIfExists);
-  }
+function doWrite(stream, state) {
+  var batch = state.writeBuffer;
+  state.writeBuffer = null;
   state.writelen = batch.length;
   state.writing = true;
   state.sync = true;
+
   stream._writeBatch(batch, state.onwrite);
   state.sync = false;
 }
@@ -157,28 +162,26 @@ function callIfExists(cb) {
   if (cb) cb();
 }
 
-function extractChunkFromWriteReq(writeReq) {
-  return writeReq.chunk;
-}
-
-function extractCbFromWriteReq(writeReq) {
-  return writeReq.cb;
-}
-
-function onwriteError(stream, state, sync, er, cb) {
+function onwriteError(stream, state, sync, er, cbs) {
   if (sync)
-    process.nextTick(function() {
-      cb(er);
-    });
+    process.nextTick(callall);
   else
-    cb(er);
+    callall();
 
   stream.emit('error', er);
+
+  function callall() {
+    var cb;
+    for(var i = 0 ; i < cbs.length; i ++) {
+      cb = cbs[i];
+      cb(er);
+    }
+  }
 }
 
 function onwriteStateUpdate(state) {
   state.writing = false;
-  state.writecb = null;
+  state.writeCallbacks = null;
   state.length -= state.writelen;
   state.writelen = 0;
 }
@@ -186,12 +189,12 @@ function onwriteStateUpdate(state) {
 function onwrite(stream, er) {
   var state = stream._writableState;
   var sync = state.sync;
-  var cb = state.writecb;
+  var cbs = state.writeCallbacks;
 
   onwriteStateUpdate(state);
 
   if (er)
-    onwriteError(stream, state, sync, er, cb);
+    onwriteError(stream, state, sync, er, cbs);
   else {
     // Check if we're actually ready to finish, but don't emit yet
     var finished = needFinish(stream, state);
@@ -201,18 +204,20 @@ function onwrite(stream, er) {
 
     if (sync) {
       process.nextTick(function() {
-        afterWrite(stream, state, finished, cb);
+        afterWrite(stream, state, finished, cbs);
       });
     } else {
-      afterWrite(stream, state, finished, cb);
+      afterWrite(stream, state, finished, cbs);
     }
   }
 }
 
-function afterWrite(stream, state, finished, cb) {
+function afterWrite(stream, state, finished, cbs) {
   if (!finished)
     onwriteDrain(stream, state);
-  cb();
+  for (var i = 0 ; i < cbs.length; i ++) {
+    cbs[i]();
+  }
   if (finished)
     finishMaybe(stream, state);
 }
