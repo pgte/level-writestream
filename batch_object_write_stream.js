@@ -117,6 +117,9 @@ function writeOrBuffer(stream, state, chunk, encoding, cb) {
   state.needDrain = !ret;
 
   if (encoding && ! chunk.encoding) chunk.encoding = encoding;
+
+  chunk = stream._map(chunk);
+
   state.buffer.push(chunk);
   state.callbacks.push(cb);
   maybeFlush(stream, state);
@@ -234,6 +237,10 @@ function onwriteDrain(stream, state) {
 
 BatchObjectWriteStream.prototype._writeBatch = function(batch, cb) {
   cb(new Error('not implemented'));
+};
+
+BatchObjectWriteStream.prototype._map = function(d) {
+  return d;
 };
 
 BatchObjectWriteStream.prototype.end = function(chunk, cb) {

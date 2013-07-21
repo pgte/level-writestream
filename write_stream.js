@@ -24,8 +24,20 @@ function WriteStream(db, options) {
 inherits(WriteStream, Writable);
 
 
-/// _write
+/// _map
 
+WriteStream.prototype._map = function _map(d) {
+  var options = this.options;
+  var key = d.key;
+  if (options.fstreamRoot &&
+      key.indexOf(options.fstreamRoot) > -1)
+    d.key = key = key.substr(options.fstreamRoot.length + 1);
+
+  return d;
+};
+
+
+/// _write
 
 WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
   var self = this;
@@ -40,6 +52,7 @@ WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
   });
   this.db.batch(batch, cb);
 };
+
 
 /// onFinish
 
