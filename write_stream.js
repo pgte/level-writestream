@@ -9,9 +9,12 @@ function createWriteStream(options) {
 };
 
 function WriteStream(db, options) {
+  if (! options) options = {};
   Writable.call(this, {
     objectMode: true,
-    highWaterMark: options && options.highWaterMark || defaultWaterMark });
+    highWaterMark: options.highWaterMark || defaultWaterMark,
+    maxConcurrentBatches: options.maxConcurrentBatches || 4
+  });
 
   this.db = db;
   this.type = options && options.type || 'put';

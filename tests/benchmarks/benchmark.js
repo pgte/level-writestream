@@ -1,6 +1,19 @@
 var fs = require('fs');
 var level = require('level');
-var WriteStream = require('../../');
+
+var max = Number(process.argv[2]);
+var chunks = Number(process.argv[3]);
+var highWaterMark = Number(process.argv[4]);
+var maxConcurrentBatches = Number(process.argv[5]);
+var wrap = process.argv[6] == 'true';
+
+console.log('conf:', {
+  max: max,
+  chunks: chunks,
+  highWaterMark: highWaterMark,
+  maxConcurrentBatches: maxConcurrentBatches,
+  wrap: wrap
+});
 
 var dir = __dirname + '/db';
 
@@ -13,7 +26,11 @@ function remove(file) {
 }
 
 var db = level(dir, {createIfMissing: true});
-WriteStream(db);
+
+if (wrap) {
+  var WriteStream = require('../..');
+  WriteStream(db);
+}
 
 /// create read stream
 
@@ -21,7 +38,11 @@ var rs = new (require('stream').PassThrough)({objectMode: true});
 
 /// cretae write stream
 
-var ws = db.createWriteStream({highWaterMark: 50});
+var ws = db.createWriteStream({
+  highWaterMark: highWaterMark,
+  maxBufferLength: highWaterMark,
+  maxConcurrentBatches: maxConcurrentBatches
+});
 
 /// pipe
 
@@ -30,8 +51,6 @@ rs.pipe(ws);
 /// start timer
 
 var key = 0;
-var max = 100000;
-var chunks = 10000;
 
 var start = Date.now();
 
@@ -47,7 +66,7 @@ ws.once('close', function() {
 function writeSome() {
   if (key < max) {
     write(chunks);
-    setTimeout(writeSome, 10);
+    process.nextTick(writeSome);
   } else rs.end();
 }
 

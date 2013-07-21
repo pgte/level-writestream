@@ -4,7 +4,8 @@
   "description": "LevelUP Write Stream compatible with streams2",
   "main": "index.js",
   "scripts": {
-    "test": "tap tests/*.test.js"
+    "test": "tap tests/*.test.js",
+    "benchmark": "tests/benchmarks/run"
   },
   "repository": {
     "type": "git",

@@ -16,6 +16,8 @@ function WritableState(options, stream) {
   var hwm = options.highWaterMark;
   this.highWaterMark = (hwm || hwm === 0) ? hwm : 100;
 
+  this.maxConcurrentBatches = options.maxConcurrentBatches || 1;
+
   // cast to ints.
   this.highWaterMark = ~~this.highWaterMark;
 
@@ -33,7 +35,7 @@ function WritableState(options, stream) {
   this.length = 0;
 
   // a flag to see when we're in the middle of a write.
-  this.writing = false;
+  this.writing = 0;
 
   // a flag to be able to tell if the onwrite cb is called immediately,
   // or on a later tick.  We set this to true at first, becuase any
@@ -41,19 +43,8 @@ function WritableState(options, stream) {
   // not happen before the first write call.
   this.sync = true;
 
-  // the callback that's passed to _write(chunk,cb)
-  this.onwrite = function(er) {
-    onwrite(stream, er);
-  };
-
-  // the amount that is being written when _write is called.
-  this.writelen = 0;
-
   this.buffer = [];
   this.callbacks = [];
-
-  this.writeBuffer = null;
-  this.writeCallbacks = null;
 }
 
 function BatchObjectWriteStream(options) {
@@ -116,13 +107,13 @@ function writeOrBuffer(stream, state, chunk, encoding, cb) {
   chunk = stream._map(chunk);
 
   state.buffer.push(chunk);
-  state.callbacks.push(cb);
+  if (cb) state.callbacks.push(cb);
   maybeFlush(stream, state);
   return ret;
 }
 
 function maybeFlush(stream, state) {
-  if (! state.writing) {
+  if (state.writing < state.maxConcurrentBatches) {
     flush(stream, state);
   } else if (! state.nextTick) {
     state.nextTick = function() {
@@ -136,24 +127,24 @@ function flush(stream, state) {
   state.nextTick = false;
   var buffer = state.buffer;
   var callbacks = state.callbacks;
-  if (! state.writing && buffer.length) {
+  if ((state.writing < state.maxConcurrentBatches) && buffer.length) {
     state.buffer = [];
     state.callbacks = [];
-    state.writeBuffer = buffer;
-    state.writeCallbacks = callbacks;
     doWrite(stream, state, buffer, callbacks);
   }
 }
 
-function doWrite(stream, state) {
-  var batch = state.writeBuffer;
-  state.writeBuffer = null;
-  state.writelen = batch.length;
-  state.writing = true;
+function doWrite(stream, state, batch, callbacks) {
+  state.writing ++;
   state.sync = true;
 
-  stream._writeBatch(batch, state.onwrite);
+  stream._writeBatch(batch, onWrite);
   state.sync = false;
+
+  function onWrite(err) {
+    onwriteStateUpdate(state, batch.length);
+    onwrite(stream, err, callbacks);
+  }
 }
 
 function onwriteError(stream, state, sync, er, cbs) {
@@ -173,19 +164,14 @@ function onwriteError(stream, state, sync, er, cbs) {
   }
 }
 
-function onwriteStateUpdate(state) {
-  state.writing = false;
-  state.writeCallbacks = null;
-  state.length -= state.writelen;
-  state.writelen = 0;
+function onwriteStateUpdate(state, length) {
+  state.writing --;
+  state.length -= length;
 }
 
-function onwrite(stream, er) {
+function onwrite(stream, er, cbs) {
   var state = stream._writableState;
   var sync = state.sync;
-  var cbs = state.writeCallbacks;
-
-  onwriteStateUpdate(state);
 
   if (er)
     onwriteError(stream, state, sync, er, cbs);
