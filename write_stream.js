@@ -43,7 +43,7 @@ WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
   var self = this;
   batch = batch.map(function(rec) {
     return {
-      type: self.type,
+      type: rec.type || self.type,
       key: rec.key,
       value: rec.value,
       keyEncoding: rec.keyEncoding || self.options.keyEncoding,

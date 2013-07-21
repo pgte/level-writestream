@@ -34,7 +34,16 @@ test('gets a put write stream', function(t) {
 
   rs.pipe(ws);
 
-  ws.once('finish', t.end.bind(t));
+  var deleted = false;
+  ws.write({key: 'GHAAAA', type: 'del'}, function(err) {
+    if (err) throw err;
+    deleted = true;
+  });
+
+  ws.once('finish', function() {
+    t.ok(deleted);
+    t.end();
+  });
 });
 
 test('all data is there', function(t) {
