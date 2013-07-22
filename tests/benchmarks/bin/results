@@ -1,0 +1,5 @@
+#!/bin/bash
+
+file=$1
+lib/results.js $file > out/plot.json
+lib/plot.js out/plot.json > out/plot.html

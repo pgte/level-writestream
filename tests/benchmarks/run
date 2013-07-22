@@ -1,7 +1,14 @@
 #!/bin/bash
 
-echo 'Plain LevelUP...'
-node tests/benchmarks/benchmark.js 1000000 1000 1000 4 false
+set -e
 
-echo 'Level-Writestream...'
-node tests/benchmarks/benchmark.js 1000000 1000 1000 4 true
+date=`date +%Y%m%d`
+fname="out/${date}.json"
+
+echo "outputting json results to $fname"
+
+bin/run > $fname
+
+bin/results $fname
+
+echo 'results written to out/plot.html'

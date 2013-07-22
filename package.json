@@ -27,6 +27,9 @@
     "tap": "*",
     "split": "*",
     "stream-combiner": "*",
-    "through": "*"
+    "through": "*",
+    "underscore": "*",
+    "mustache": "*",
+    "node-uuid": "*"
   }
 }

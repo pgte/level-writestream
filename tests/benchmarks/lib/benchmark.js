@@ -5,15 +5,26 @@ var max = Number(process.argv[2]);
 var chunks = Number(process.argv[3]);
 var highWaterMark = Number(process.argv[4]);
 var maxConcurrentBatches = Number(process.argv[5]);
-var wrap = process.argv[6] == 'true';
+var timeoutBetweenChunks = Number(process.argv[6])
+var valueSize = Number(process.argv[7])
+var wrap = process.argv[8] == 'true';
 
-console.log('conf:', {
+var conf = {
   max: max,
-  chunks: chunks,
+  chunkSize: chunks,
   highWaterMark: highWaterMark,
   maxConcurrentBatches: maxConcurrentBatches,
+  timeoutBetweenChunks: timeoutBetweenChunks,
+  valueSize: valueSize,
   wrap: wrap
-});
+};
+
+// value
+
+var value = '';
+for (var i = 0 ; i < valueSize; i ++) {
+  value += 'A';
+}
 
 var dir = __dirname + '/db';
 
@@ -28,7 +39,7 @@ function remove(file) {
 var db = level(dir, {createIfMissing: true});
 
 if (wrap) {
-  var WriteStream = require('../..');
+  var WriteStream = require('../../..');
   WriteStream(db);
 }
 
@@ -57,7 +68,8 @@ var start = Date.now();
 ws.once('close', function() {
   var end = Date.now();
   var ellapsed = end - start;
-  console.log('wrote %d records in %d ms', key, ellapsed);
+  conf.ellapsed = ellapsed;
+  console.log(JSON.stringify(conf));
 });
 
 
@@ -75,6 +87,6 @@ writeSome();
 function write(n) {
   for(var i = 0; i < n; i ++) {
     key ++;
-    rs.write({key: key.toString(), value: 'v' + key});
+    rs.write({key: key.toString(), value: value});
   }
 }
