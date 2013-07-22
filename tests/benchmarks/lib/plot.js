@@ -6,6 +6,10 @@ var template = fs.readFileSync(__dirname + '/../assets/template.html', 'utf8');
 var mustache = require('mustache');
 var data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 
+data = data.filter(function(d) {
+  return Object.keys(d.points).length >= 2;
+});
+
 var i = 0;
 
 data.forEach(function(d) {
@@ -14,7 +18,7 @@ data.forEach(function(d) {
   var series = Object.keys(d.points);
   var main = series.map(function(serie) {
     return {
-      wrapped: serie,
+      tested: serie == 'true' ? 'level-writestream' : 'LevelUP',
       className: "." + serie,
       data: d.points[serie]
     };
@@ -37,6 +41,21 @@ data.forEach(function(d) {
   // console.log('data.label:', data.label);
 });
 
-var rendered = mustache.render(template, {charts: data});
+data = data.sort(function(a, b) {
+  return a.yLabel > b.yLabel ? 1 : -1 ;
+});
+
+var labels = [];
+
+var oldLabel;
+data.forEach(function(d) {
+  if (! oldLabel || oldLabel != d.yLabel) {
+    oldLabel = d.yLabel;
+    d['changesLabel?'] = [{label: oldLabel}];
+    labels.push(oldLabel);
+  }
+});
+
+var rendered = mustache.render(template, {charts: data, labels: labels});
 
 process.stdout.write(rendered);

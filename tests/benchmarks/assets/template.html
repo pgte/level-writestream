@@ -2,6 +2,7 @@
   <head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="assets/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/master.css">
     <script src="assets/d3.v3.js"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
     <script src="assets/xcharts.js"></script>
@@ -11,56 +12,68 @@
   <body>
     <div class="container">
       <h1>Benchmarks of level-writestream vs. LevelUP</h1>
-
       <p>Vertical axis: time (ms)</p>
 
+      <ul>
+        {{#labels}}
+          <li><a href="#{{{.}}}">{{.}}</a></li>
+        {{/labels}}
+      </ul>
+
       {{#charts}}
-        <h2>{{id}}</h2>
-        <p>
-          Fixed values: {{abc}}
-          <table class="table table-bordered table-condensed" style="width: auto">
-            {{#label}}
-              <tr>
-                <td>{{key}}</td>
-                <td>{{value}}</td>
-              </tr>
-            {{/label}}
-          </table>
-        </p>
-        <p>Horizontal axis: {{yLabel}}</p>
 
-        <table class="table table-striped table-bordered" style="width: auto">
-
-          <thead>
-            <tr>
-              <th>{{yLabel}}</th>
-              {{#data}}
-                {{#labels}}
-                  <th>{{x}}</th>
-                {{/labels}}
-              {{/data}}
-            </tr>
-          </thead>
-
-          {{#data}}
-
-
-            {{#main}}
-              <tbody>
+        <div class="chart">
+          {{#changesLabel?}}
+            <a id="{{{label}}}"></a>
+            <h2>Varying {{label}}</h2>
+          {{/changesLabel?}}
+        <div class="info">
+          <h3>{{id}}</h3>
+          <p>
+            Fixed values: {{abc}}
+            <table class="table table-bordered table-condensed" style="width: auto">
+              {{#label}}
                 <tr>
-                  <td>wrapped: {{wrapped}}</td>
-                  {{#data}}
-                  <td>{{y}}</td>
-                  {{/data}}
+                  <th>{{key}}</th>
+                  <td>{{value}}</td>
                 </tr>
-              </tbody>
-            {{/main}}
-          {{/data}}
-        </table>
+              {{/label}}
+            </table>
+          </p>
 
-        <figure  style="width: 400px; height: 300px;" id="{{id}}"></figure>
+          <table class="table table-striped table-bordered" style="width: auto">
+
+            <thead>
+              <tr>
+                <th>{{yLabel}}</th>
+                {{#data}}
+                  {{#labels}}
+                    <th>{{x}}</th>
+                  {{/labels}}
+                {{/data}}
+              </tr>
+            </thead>
+
+            {{#data}}
+
+
+              {{#main}}
+                <tbody>
+                  <tr>
+                    <td>{{tested}}</td>
+                    {{#data}}
+                    <td>{{y}}</td>
+                    {{/data}}
+                  </tr>
+                </tbody>
+              {{/main}}
+            {{/data}}
+          </table>
+        </div>
+
+        <figure class="graph" style="width: 400px; height: 300px;" id="{{id}}"></figure>
+      </div>
       {{/charts}}
-    </div>
 
     {{#charts}}
       <script>
@@ -68,5 +81,6 @@
         var chart = new xChart('line-dotted', data, '#{{id}}');
       </script>
     {{/charts}}
+    </div>
   </body>
 </html>
