@@ -43,7 +43,7 @@ ws.once('finish', function() {
 });
 ```
 
-You can use the same options as in [the LevelUP API](https://github.com/rvagg/node-levelup#createWriteStream).
+You can use the same options as in [the LevelUP API](https://github.com/rvagg/node-levelup#createWriteStream) plus all the streams2 API conventions.
 
 ## Benchmark
 
