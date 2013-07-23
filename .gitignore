@@ -2,3 +2,4 @@
 node_modules
 tests/db
 tests/benchmarks/db
+tests/benchmarks/old/db
