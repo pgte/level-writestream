@@ -1,0 +1,7 @@
+#!/bin/bash
+
+echo 'Plain LevelUP...'
+node tests/benchmarks/old/benchmark.js 1000000 1000 4000 4 false
+
+echo 'Level-Writestream...'
+node tests/benchmarks/old/benchmark.js 1000000 1000 4000 4 true
