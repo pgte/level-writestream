@@ -1,6 +1,6 @@
 {
   "name": "level-writestream",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "LevelUP Write Stream compatible with streams2",
   "main": "index.js",
   "scripts": {
