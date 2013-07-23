@@ -31,5 +31,10 @@
     "underscore": "*",
     "mustache": "*",
     "node-uuid": "*"
+  },
+  "dependencies": {
+    "concat-stream": "~1.0.0",
+    "xtend": "~2.0.6",
+    "batch-write-stream": "~0.1.6"
   }
 }

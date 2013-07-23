@@ -1,64 +1,110 @@
-var Writable = require('./batch_object_write_stream');
 var inherits = require('util').inherits;
 
 var defaultWaterMark = 100;
 
-exports.create =
-function createWriteStream(options) {
-  return new WriteStream(this, options);
-};
+var BatchWriteStream = require('batch-write-stream')
+  , inherits         = require('util').inherits
+  , extend           = require('xtend')
+  , concatStream     = require('concat-stream')
 
-function WriteStream(db, options) {
-  if (! options) options = {};
-  Writable.call(this, {
-    objectMode: true,
-    highWaterMark: options.highWaterMark || defaultWaterMark,
-    maxConcurrentBatches: options.maxConcurrentBatches || 4
-  });
+  , setImmediate     = global.setImmediate || process.nextTick
 
-  this.db = db;
-  this.type = options && options.type || 'put';
+  , defaultOptions = {
+      highWaterMark: 1e5,
+      maxConcurrentBatches: 4,
+      type: 'put',
+      flushWait: 10
+    }
 
-  this.once('finish', onFinish.bind(this));
+function WriteStream(options, db) {
+  this._options = options = extend(defaultOptions, options || {})
+  this._db = db
+  this._type = this._options.type
+  this._options = options
 
-  this.options = options || {};
+
+  this.once('finish', onFinish.bind(this))
+
+  BatchWriteStream.call(this, {
+      objectMode: true
+    , highWaterMark: options.highWaterMark
+    , maxConcurrentBatches: options.maxConcurrentBatches
+    , flushWait: options.flushWait
+  })
+
+  ready(this)
 }
 
-inherits(WriteStream, Writable);
+inherits(WriteStream, BatchWriteStream)
 
 
-/// _map
+function ready(stream) {
+  if (stream._db.isOpen()) {
+    setImmediate(function() {
+      stream.emit('ready')
+    })
+  } else {
+    stream._db.once('ready', function() {
+      stream.emit('ready')
+    })
+  }
+}
 
-WriteStream.prototype._map = function _map(d) {
-  var options = this.options;
-  var key = d.key;
-  if (options.fstreamRoot &&
-      key.indexOf(options.fstreamRoot) > -1)
-    d.key = key = key.substr(options.fstreamRoot.length + 1);
-
-  return d;
-};
-
-
-/// _write
 
 WriteStream.prototype._writeBatch = function _writeBatch(batch, cb) {
-  var self = this;
-  batch = batch.map(function(rec) {
-    return {
-      type: rec.type || self.type,
-      key: rec.key,
-      value: rec.value,
-      keyEncoding: rec.keyEncoding || self.options.keyEncoding,
-      valueEncoding: rec.valueEncoding || self.encoding || self.options.valueEncoding
-    }
-  });
-  this.db.batch(batch, cb);
-};
+  this._db.batch(batch, cb)
+}
 
+WriteStream.prototype._map = function(rec) {
+  return {
+    type: rec.type || this._type,
+    key: rec.key,
+    value: rec.value,
+    keyEncoding: rec.keyEncoding || this._options.keyEncoding,
+    valueEncoding: rec.valueEncoding || this.encoding || this._options.valueEncoding
+  }
+}
 
-/// onFinish
+WriteStream.prototype.add = function add(entry) {
+  if (!entry.props)
+    return
+  if (entry.props.Directory)
+    entry.pipe(this._db.writeStream(this._options))
+  else if (entry.props.File || entry.File || entry.type == 'File')
+    this.addWrite(entry)
+  return true
+}
+
+WriteStream.prototype.addWrite = function addWrite(entry) {
+  var key = entry.path || entry.props.path
+      , self = this
+
+    if (!key)
+      return
+
+    entry.pipe(concatStream(function (err, data) {
+      if (err) {
+        self.writable = false
+        return self.emit('error', err)
+      }
+
+      if (self._options.fstreamRoot &&
+          key.indexOf(self._options.fstreamRoot) > -1)
+        key = key.substr(self._options.fstreamRoot.length + 1)
+
+      self.write({ key: key, value: data })
+    }))
+}
 
 function onFinish() {
-  this.emit('close'); // backwards compatibility
+  this.emit('close') // backwards compatibility
+}
+
+WriteStream.prototype.toString = function () {
+  return 'Level-WriteStream'
+}
+
+exports.create =
+function createWriteStream(options) {
+  return new WriteStream(options, this)
 }
