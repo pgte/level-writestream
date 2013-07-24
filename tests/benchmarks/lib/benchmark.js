@@ -45,7 +45,7 @@ if (wrap) {
 
 /// create read stream
 
-var rs = new (require('stream').PassThrough)({objectMode: true});
+//var rs = new (require('stream').PassThrough)({objectMode: true});
 
 /// cretae write stream
 
@@ -57,7 +57,7 @@ var ws = db.createWriteStream({
 
 /// pipe
 
-rs.pipe(ws);
+//rs.pipe(ws);
 
 /// start timer
 
@@ -79,7 +79,7 @@ function writeSome() {
   if (key < max) {
     write(chunks);
     setTimeout(writeSome, 10);
-  } else rs.end();
+  } else ws.end();
 }
 
 writeSome();
@@ -87,6 +87,6 @@ writeSome();
 function write(n) {
   for(var i = 0; i < n; i ++) {
     key ++;
-    rs.write({key: key.toString(), value: value});
+    ws.write({key: key.toString(), value: value});
   }
 }

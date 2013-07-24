@@ -13,8 +13,6 @@ data = data.filter(function(d) {
 var i = 0;
 
 data.forEach(function(d) {
-  i ++;
-  d.id = 'chart-' + i;
   var series = Object.keys(d.points);
   var main = series.map(function(serie) {
     return {
@@ -43,6 +41,11 @@ data.forEach(function(d) {
 
 data = data.sort(function(a, b) {
   return a.yLabel > b.yLabel ? 1 : -1 ;
+});
+
+data.forEach(function(d) {
+  i ++;
+  d.id = 'chart-' + i;
 });
 
 var labels = [];
