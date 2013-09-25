@@ -3,12 +3,12 @@
 set -e
 
 date=`date +%Y%m%d`
-fname="out/${date}.json"
+fname="tests/benchmarks/out/${date}.json"
 
 echo "outputting json results to $fname"
 
-bin/run > $fname
+tests/benchmarks/bin/run > $fname
 
-bin/results $fname
+tests/benchmarks/bin/results $fname
 
 echo 'results written to out/plot.html'
