@@ -39,7 +39,7 @@ inherits(WriteStream, BatchWriteStream)
 
 
 function ready(stream) {
-  if (stream._db.isOpen()) {
+  if (stream._db.isOpen && stream._db.isOpen()) {
     setImmediate(function() {
       stream.emit('ready')
     })
