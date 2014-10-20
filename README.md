@@ -1,5 +1,7 @@
 # level-writestream
 
+[![Build Status](https://travis-ci.org/pgte/level-writestream.svg?branch=master)](https://travis-ci.org/pgte/level-writestream)
+
 > Streams2-compliant write stream for LevelDB
 
 ## Install
