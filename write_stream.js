@@ -43,7 +43,7 @@ function ready(stream) {
     setImmediate(function() {
       stream.emit('ready')
     })
-  } else {
+  } else {
     stream._db.once('ready', function() {
       stream.emit('ready')
     })
